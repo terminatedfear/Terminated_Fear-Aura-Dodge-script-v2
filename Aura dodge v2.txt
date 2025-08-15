@@ -1,0 +1,104 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HRP = Character:WaitForChild("HumanoidRootPart")
+local Humanoid = Character:WaitForChild("Humanoid")
+
+local DodgeDistance = 15
+local DodgeCooldown = 0.5
+local LastDodge = 0
+local DodgeEnabled = false
+local StudsTraveled = 0
+local LastPosition = HRP.Position
+local DodgeRadius = 20 -- distance at which dodge triggers
+
+-- GUI
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "Terminated_Fear_Dodge"
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 300, 0, 200)
+frame.Position = UDim2.new(0.5, -150, 0.5, -100)
+frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+frame.Active = true
+frame.Draggable = true
+
+local UICorner = Instance.new("UICorner", frame)
+UICorner.CornerRadius = UDim.new(0,12)
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1,0,0,30)
+title.BackgroundTransparency = 1
+title.Text = "Terminated_Fear Dodge Instinct"
+title.TextColor3 = Color3.fromRGB(0, 255, 170)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+
+local toggleButton = Instance.new("TextButton", frame)
+toggleButton.Size = UDim2.new(0,260,0,40)
+toggleButton.Position = UDim2.new(0,20,0,50)
+toggleButton.Text = "Toggle Dodge: OFF"
+toggleButton.BackgroundColor3 = Color3.fromRGB(0,170,255)
+toggleButton.TextColor3 = Color3.fromRGB(255,255,255)
+toggleButton.Font = Enum.Font.GothamBold
+toggleButton.TextSize = 16
+
+local radiusLabel = Instance.new("TextLabel", frame)
+radiusLabel.Size = UDim2.new(0,260,0,30)
+radiusLabel.Position = UDim2.new(0,20,0,100)
+radiusLabel.BackgroundTransparency = 1
+radiusLabel.TextColor3 = Color3.fromRGB(0,255,170)
+radiusLabel.Font = Enum.Font.Gotham
+radiusLabel.TextSize = 16
+radiusLabel.Text = "Dodge Radius: "..DodgeRadius.." studs"
+
+local studsLabel = Instance.new("TextLabel", frame)
+studsLabel.Size = UDim2.new(0,260,0,30)
+studsLabel.Position = UDim2.new(0,20,0,135)
+studsLabel.BackgroundTransparency = 1
+studsLabel.TextColor3 = Color3.fromRGB(0,255,170)
+studsLabel.Font = Enum.Font.Gotham
+studsLabel.TextSize = 16
+studsLabel.Text = "Studs Traveled: 0"
+
+toggleButton.MouseButton1Click:Connect(function()
+    DodgeEnabled = not DodgeEnabled
+    toggleButton.Text = "Toggle Dodge: "..(DodgeEnabled and "ON" or "OFF")
+end)
+
+local function GetNearestThreat()
+    local nearest = nil
+    local minDist = math.huge
+    for _, enemy in pairs(workspace:GetChildren()) do
+        if enemy:FindFirstChild("HumanoidRootPart") and enemy ~= Character then
+            local dist = (enemy.HumanoidRootPart.Position - HRP.Position).Magnitude
+            if dist < minDist then
+                minDist = dist
+                nearest = enemy
+            end
+        end
+    end
+    return nearest, minDist
+end
+
+local function Dodge()
+    if not DodgeEnabled then return end
+    if tick() - LastDodge < DodgeCooldown then return end
+
+    local threat, dist = GetNearestThreat()
+    if threat and dist <= DodgeRadius then
+        local direction = (HRP.Position - threat.HumanoidRootPart.Position).Unit
+        HRP.CFrame = CFrame.new(HRP.Position + direction * DodgeDistance)
+        LastDodge = tick()
+    end
+end
+
+RunService.RenderStepped:Connect(function()
+    Dodge()
+    local traveled = (HRP.Position - LastPosition).Magnitude
+    StudsTraveled = StudsTraveled + traveled
+    studsLabel.Text = "Studs Traveled: "..math.floor(StudsTraveled)
+    LastPosition = HRP.Position
+end)
